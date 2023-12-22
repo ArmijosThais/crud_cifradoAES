@@ -3,8 +3,11 @@ import Table from 'react-bootstrap/Table'
 import Button from 'react-bootstrap/esm/Button'
 import Modal from 'react-bootstrap/Modal'
 import Form from 'react-bootstrap/Form'
+import CryptoAES from 'crypto-js/aes'
+import CryptoENC from 'crypto-js/enc-utf8'
 
 function Crud() {
+  var claveSecreta = 'aes_octavo_sw'
   const [show, setShow] = useState(false)
   const [data, setData] = useState([{ id: '', nombre: '', clave: '' }])
   const [formData, setFormData] = useState({
@@ -12,6 +15,15 @@ function Crud() {
     nombre: '',
     clave: '',
   })
+
+  function cifrar(mensaje) {
+    return CryptoAES.encrypt(mensaje, claveSecreta).toString()
+  }
+
+  function descifrar(textoCifrado) {
+    var textoDescifrado = CryptoAES.decrypt(textoCifrado, claveSecreta)
+    return CryptoENC.stringify(textoDescifrado)
+  }
 
   const handleClose = () => {
     setShow(false)
@@ -59,6 +71,11 @@ function Crud() {
   }
 
   const handleSave = () => {
+    let claveOriginal = formData.clave
+    if (formData.clave) {
+      formData.clave = cifrar(claveOriginal)
+    }
+
     const url = formData.id ? 'editar.php' : 'agregar.php' // Determinar la URL según si es una edición o adición de usuario
 
     fetch(`http://localhost:8084/PracticasSeguridad/evaluacion/${url}`, {
@@ -83,9 +100,15 @@ function Crud() {
       'http://localhost:8084/PracticasSeguridad/evaluacion/listarUsuarios.php'
     )
       .then((response) => response.json())
-      .then((users) => setData(users))
+      .then((users) => {
+        // Desencriptar la clave antes de establecer el estado
+        users.forEach((user) => {
+          user.clave = descifrar(user.clave)
+        })
+        setData(users)
+      })
       .catch((error) => console.error('Error fetching data:', error))
-  })
+  }, [])
 
   return (
     <div>
@@ -98,7 +121,6 @@ function Crud() {
           </tr>
         </thead>
         <tbody>
-          {/* Mapear los datos del estado para mostrar cada fila */}
           {data.map((item) => (
             <tr key={item.id}>
               <td>{item.id}</td>
